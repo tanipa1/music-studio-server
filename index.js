@@ -159,6 +159,39 @@ async function run() {
       res.send(result);
     })
 
+    app.patch('/classes/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+
+      let updateDoc;
+
+      if (req.body.action === 'approve') {
+        updateDoc = {
+          $set: {
+            status: 'approved'
+          }
+        };
+      } else if (req.body.action === 'deny') {
+        updateDoc = {
+          $set: {
+            status: 'denied'
+          }
+        };
+      } else if (req.body.action === 'feedback') {
+        updateDoc = {
+          $set: {
+            feedback: req.body.feedback
+          }
+        };
+      } else {
+        return res.status(400).json({ error: 'Invalid action' });
+      }
+
+      const result = await classCollection.findOneAndUpdate(filter, updateDoc);
+      res.send(result);
+    })
+
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
