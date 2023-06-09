@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const app = express();
 const port = process.env.PORT || 5000;
@@ -45,6 +45,7 @@ async function run() {
 
     const instructorCollection = client.db('musicDB').collection('instructors');
     const userCollection = client.db('musicDB').collection('users');
+    
     // jwt
     app.post('/jwt', (req, res) => {
       const user = req.body;
@@ -52,8 +53,19 @@ async function run() {
       res.send({ token });
     })
 
+    // admin verify middleware
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email }
+      const user = await userCollection.findOne(query);
+      if (user?.role !== 'admin') {
+          return res.status(403).send({ error: true, message: "forbidden message" })
+      }
+      next();
+  }
+
     // users related apis
-    app.get('/users', verifyJWT, async (req, res) => {
+    app.get('/users', async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     })
@@ -73,12 +85,25 @@ async function run() {
       const email = req.params.email;
 
       if (req.decoded.email !== email) {
-          res.send({ admin: false })
+        res.send({ admin: false })
       }
 
       const query = { email: email }
       const user = await userCollection.findOne(query);
       const result = { admin: user?.role === 'admin' }
+      res.send(result);
+    })
+
+    app.patch('/users/admin/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+          $set: {
+              role: 'admin'
+          },
+      };
+
+      const result = await userCollection.updateOne(filter, updateDoc);
       res.send(result);
   })
 
