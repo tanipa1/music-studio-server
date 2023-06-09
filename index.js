@@ -45,7 +45,8 @@ async function run() {
 
     const instructorCollection = client.db('musicDB').collection('instructors');
     const userCollection = client.db('musicDB').collection('users');
-    
+    const classCollection = client.db('musicDB').collection('classes');
+
     // jwt
     app.post('/jwt', (req, res) => {
       const user = req.body;
@@ -59,13 +60,13 @@ async function run() {
       const query = { email: email }
       const user = await userCollection.findOne(query);
       if (user?.role !== 'admin') {
-          return res.status(403).send({ error: true, message: "forbidden message" })
+        return res.status(403).send({ error: true, message: "forbidden message" })
       }
       next();
-  }
+    }
 
     // users related apis
-    app.get('/users', async (req, res) => {
+    app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     })
@@ -98,19 +99,54 @@ async function run() {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
-          $set: {
-              role: 'admin'
-          },
+        $set: {
+          role: 'admin'
+        },
       };
 
       const result = await userCollection.updateOne(filter, updateDoc);
       res.send(result);
-  })
+    })
+
+    // instructors related apis
+
+    app.get('/users/instructor/:email', verifyJWT, async (req, res) => {
+      const email = req.params.email;
+
+      if (req.decoded.email !== email) {
+        res.send({ instructor: false })
+      }
+
+      const query = { email: email }
+      const user = await userCollection.findOne(query);
+      const result = { instructor: user?.role === 'instructor' }
+      res.send(result);
+    })
+
+    app.patch('/users/instructor/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          role: 'instructor'
+        },
+      };
+
+      const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    })
 
     // instructors
     app.get('/instructors', async (req, res) => {
       const instructors = req.body;
       const result = await instructorCollection.find().toArray();
+      res.send(result);
+    })
+
+    // Classes Api
+    app.post('/classes', async (req, res) => {
+      const classes = req.body;
+      const result = await classCollection.insertOne(classes);
       res.send(result);
     })
 
