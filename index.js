@@ -112,6 +112,11 @@ async function run() {
 
     // instructors related apis
 
+    app.get('/users/instructor', async (req, res) => {
+      const result = await userCollection.find({ role: 'instructor' }).toArray();
+      res.send(result);
+    });    
+
     app.get('/users/instructor/:email', verifyJWT, async (req, res) => {
       const email = req.params.email;
 
