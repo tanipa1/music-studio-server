@@ -115,7 +115,7 @@ async function run() {
     app.get('/users/instructor', async (req, res) => {
       const result = await userCollection.find({ role: 'instructor' }).toArray();
       res.send(result);
-    });    
+    });
 
     app.get('/users/instructor/:email', verifyJWT, async (req, res) => {
       const email = req.params.email;
@@ -198,6 +198,30 @@ async function run() {
       res.send(result);
     })
 
+    app.get('/classes/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await classCollection.findOne(query);
+      res.send(result);
+    })
+
+    app.put('/classes/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) }
+      const options = { upsert: true };
+      const updatedClass = req.body;
+      const classes = {
+        $set: {
+          price: updatedClass.price,
+          class_Name: updatedClass.name,
+          photo: updatedClass.photo,
+          available_seats: updatedClass.seats
+        },
+      }
+      const result = await classCollection.updateOne(filter, classes, options)
+      res.send(result);
+    })
+
     // selected class collection apis
     app.get('/selectedClasses', verifyJWT, async (req, res) => {
       const email = req.query.email;
@@ -224,7 +248,7 @@ async function run() {
       const query = { _id: new ObjectId(id) }
       const result = await selectedClassCollection.deleteOne(query);
       res.send(result);
-  })
+    })
 
 
 
