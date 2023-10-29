@@ -27,7 +27,10 @@ const verifyJWT = (req, res, next) => {
   })
 }
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.1qll9ix.mongodb.net/?retryWrites=true&w=majority`;
+// username: kamruzzamanmishu82
+// password: 5T0ibeciHO3392Q6
+
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.kytflwj.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -71,7 +74,7 @@ async function run() {
     app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
-    })
+    });
 
     app.post('/users', async (req, res) => {
       const user = req.body;
