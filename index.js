@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const app = express();
+const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 const port = process.env.PORT || 5000;
 
 // middlewear
@@ -216,9 +217,11 @@ async function run() {
       const classes = {
         $set: {
           price: updatedClass.price,
-          class_Name: updatedClass.name,
+          class_Name: updatedClass.class_Name,
           photo: updatedClass.photo,
-          available_seats: updatedClass.seats
+          available_seats: updatedClass.available_seats,
+          status: updatedClass.status,
+          enroll: updatedClass.enroll
         },
       }
       const result = await classCollection.updateOne(filter, classes, options)
@@ -252,6 +255,33 @@ async function run() {
       const result = await selectedClassCollection.deleteOne(query);
       res.send(result);
     })
+
+    app.get("/selectedclasses/:id", async (req, res) => {
+      const id = req.params.id;
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).send("Invalid class ID");
+      }
+      const query = { _id: new ObjectId(id) };
+      const result = await selectedClassCollection.findOne(query);
+      if (!result) {
+        return res.status(404).send("Class not found");
+      }
+      res.send(result);
+    });
+
+    //payment related apis
+    app.post('/create-payment-intent', async (req, res) => {
+      const { price } = req.body;
+      const amount = price * 100;
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ['card']
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      })
+    }) 
 
 
 
