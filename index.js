@@ -28,8 +28,6 @@ const verifyJWT = (req, res, next) => {
   })
 }
 
-// username: kamruzzamanmishu82
-// password: 5T0ibeciHO3392Q6
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.kytflwj.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -51,6 +49,7 @@ async function run() {
     const userCollection = client.db('musicDB').collection('users');
     const classCollection = client.db('musicDB').collection('classes');
     const selectedClassCollection = client.db('musicDB').collection('selectedClasses');
+    const paymentCollection = client.db('musicDB').collection('payments');
 
 
     // jwt
@@ -171,7 +170,12 @@ async function run() {
     })
 
     app.patch('/classes/:id', async (req, res) => {
-      const id = req.params.id;
+      let id = req.query.id;
+
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).json({ error: 'Invalid ObjectId' });
+      }
+
       const filter = { _id: new ObjectId(id) };
 
       let updateDoc;
@@ -197,7 +201,6 @@ async function run() {
       } else {
         return res.status(400).json({ error: 'Invalid action' });
       }
-
       const result = await classCollection.findOneAndUpdate(filter, updateDoc);
       res.send(result);
     })
@@ -228,6 +231,34 @@ async function run() {
       res.send(result);
     })
 
+    app.patch('/classes/update/:id', async (req, res) => {
+      const id = req.params.id;
+
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).json({ error: 'Invalid ObjectId' });
+      }
+
+      try {
+        const filter = { _id: new ObjectId(id) };
+
+        const result = await classCollection.updateOne(
+          filter,
+          { $inc: { available_seats: -1, enroll: 1 } }
+        );
+
+        if (result.matchedCount === 1 && result.modifiedCount === 1) {
+          res.status(200).json({ message: 'Successfully updated availableSeats.' });
+        } else if (result.matchedCount === 0) {
+          res.status(404).json({ message: 'Class not found.' });
+        } else {
+          res.status(500).json({ message: 'Failed to update availableSeats.' });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'An error occurred while updating availableSeats.' });
+      }
+    });
+
     // selected class collection apis
     app.get('/selectedClasses', verifyJWT, async (req, res) => {
       const email = req.query.email;
@@ -256,7 +287,7 @@ async function run() {
       res.send(result);
     })
 
-    app.get("/selectedclasses/:id", async (req, res) => {
+    app.get("/selectedClasses/:id", async (req, res) => {
       const id = req.params.id;
       if (!ObjectId.isValid(id)) {
         return res.status(400).send("Invalid class ID");
@@ -267,6 +298,37 @@ async function run() {
         return res.status(404).send("Class not found");
       }
       res.send(result);
+    });
+
+    app.patch('/selectedClasses/:id', async (req, res) => {
+      const id = req.params.id;
+      const type = "paid"
+      const filter = { _id: new ObjectId(id) }
+      const UpdateDoc = {
+        $set: {
+          type: type
+        }
+      }
+      const result = await selectedClassCollection.updateOne(filter, UpdateDoc);
+      res.send(result)
+    })
+
+    app.get("/selectedClasses/student/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        if (!email) {
+          res.send([]);
+        }
+        const query = {
+          studentEmail: email
+        };
+        const result = await selectedClassCollection.find(query).toArray();
+        res.send(result);
+      }
+      catch (error) {
+        console.error("Error retrieving selected classes:", error);
+        res.status(500).send("Internal Server Error");
+      }
     });
 
     //payment related apis
@@ -281,7 +343,31 @@ async function run() {
       res.send({
         clientSecret: paymentIntent.client_secret,
       })
-    }) 
+    })
+
+    app.post("/payments", async (req, res) => {
+      const newPayment = req.body;
+      const result = await paymentCollection.insertOne(newPayment)
+      res.send(result)
+    })
+
+    app.get("/payments/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        if (!email) {
+          res.send([]);
+        }
+        const query = {
+          email: email
+        };
+        const result = await paymentCollection.find(query).sort({ _id: -1 }).toArray();
+        res.send(result);
+      }
+      catch (error) {
+        console.error("Error retrieving selected classes:", error);
+        res.status(500).send("Internal Server Error");
+      }
+    });
 
 
 
